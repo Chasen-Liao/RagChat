@@ -49,21 +49,49 @@
 
 ## RAG 工作流程
 
-```
-用户提问 → 向量检索 → 获取相关文档 → 构建提示词 → LLM 生成 → 流式返回
-    │           │              │
-    │           ↓              │
-    │     Chroma DB            │
-    │           ↑              │
-文档上传 → 文本分割 → Embedding → 存储
+```mermaid
+flowchart TB
+    subgraph 离线处理["离线处理 - 文档入库"]
+        A[文档上传] --> B[文本分割]
+        B --> C[Embedding 向量化]
+        C --> D[(Chroma DB)]
+    end
+
+    subgraph 在线查询["在线查询 - 对话生成"]
+        E[用户提问] --> F[问题向量化]
+        F --> G[向量检索]
+        G --> D
+        D --> H[获取相关文档]
+        H --> I[构建提示词]
+        I --> J[LLM 生成]
+        J --> K[流式返回]
+    end
+
+    subgraph 记忆管理["对话记忆"]
+        L[(Session Memory)]
+        E --> L
+        K --> L
+        L --> I
+    end
+
+    style A fill:#e1f5fe
+    style E fill:#f3e5f5
+    style K fill:#e8f5e9
+    style D fill:#fff3e0
+    style L fill:#fce4ec
 ```
 
-1. **文档加载**: 支持 PDF、TXT 文件上传
-2. **文本分割**: RecursiveCharacterTextSplitter
-3. **向量化**: SiliconFlow Embedding API
-4. **存储**: Chroma 本地向量数据库
-5. **检索**: 相似度搜索 Top-K
-6. **生成**: 基于上下文的回答生成
+### 流程说明
+
+| 阶段 | 步骤 | 说明 |
+|------|------|------|
+| 离线处理 | 文档上传 | 支持 PDF、TXT 文件上传 |
+| | 文本分割 | RecursiveCharacterTextSplitter |
+| | 向量化 | SiliconFlow Embedding API |
+| | 存储 | Chroma 本地向量数据库 |
+| 在线查询 | 向量检索 | 相似度搜索 Top-K |
+| | 提示构建 | 结合上下文 + 对话历史 |
+| | LLM 生成 | 基于上下文的回答生成 |
 
 ## 如何运行
 

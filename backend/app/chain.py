@@ -46,7 +46,7 @@ def get_llm() -> ChatOpenAI:
         base_url=settings.siliconflow_api_base,
         model=settings.llm_model,
         streaming=True,
-        temperature=0.7,
+        temperature=0.2,
     )
 
 
