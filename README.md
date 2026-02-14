@@ -1,6 +1,6 @@
 # RAG Chat
 
-基于 LangChain 的 RAG（检索增强生成）聊天助手
+基于 LangChain 的 RAG 聊天助手
 
 ![初始页面](image.png)
 
