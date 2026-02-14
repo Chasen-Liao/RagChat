@@ -1,24 +1,43 @@
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, List
 from langchain_openai import ChatOpenAI
-from langchain.chains import ConversationalRetrievalChain
-from langchain.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from .config import settings
-from .vectorstore import vectorstore_manager
-from .memory import history_manager
 
 
-PROMPT_TEMPLATE = """你是一个专业的AI助手，请根据以下上下文信息回答用户问题。
-如果上下文中没有相关信息，请诚实地说明你不知道，不要编造答案。
+class ChatHistory:
+    _instance = None
+    _histories = {}
 
-上下文信息：
-{context}
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
-聊天历史：
-{chat_history}
+    def get_messages(self, session_id: str) -> List:
+        if session_id not in self._histories:
+            self._histories[session_id] = [
+                SystemMessage(
+                    content="你是一个专业的AI助手，名叫小正。你知识渊博，回答准确、详细、有帮助。使用中文回答，语气友好专业。"
+                )
+            ]
+        return self._histories[session_id]
 
-用户问题：{question}
+    def add_message(self, session_id: str, role: str, content: str):
+        messages = self.get_messages(session_id)
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        else:
+            messages.append(AIMessage(content=content))
 
-请用中文详细回答："""
+    def clear_session(self, session_id: str):
+        if session_id in self._histories:
+            del self._histories[session_id]
+
+    def get_all_sessions(self):
+        return list(self._histories.keys())
+
+
+history_manager = ChatHistory()
 
 
 def get_llm() -> ChatOpenAI:
@@ -31,60 +50,32 @@ def get_llm() -> ChatOpenAI:
     )
 
 
-def get_chain(session_id: str = "default"):
-    llm = get_llm()
-    retriever = vectorstore_manager.get_retriever(k=4)
-
-    prompt = PromptTemplate(
-        template=PROMPT_TEMPLATE,
-        input_variables=["context", "chat_history", "question"],
-    )
-
-    memory = ConversationBufferWindowMemory(
-        memory_key="chat_history",
-        input_key="question",
-        output_key="answer",
-        chat_memory=history_manager.get_session_history(session_id),
-        k=settings.max_history_length,
-        return_messages=True,
-    )
-
-    chain = ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=retriever,
-        memory=memory,
-        return_source_documents=True,
-        combine_docs_chain_kwargs={"prompt": prompt},
-        verbose=True,
-    )
-
-    return chain
-
-
 async def stream_chat(
     query: str, session_id: str = "default"
 ) -> AsyncGenerator[str, None]:
-    chain = get_chain(session_id)
+    llm = get_llm()
+    history_manager.add_message(session_id, "user", query)
+    messages = history_manager.get_messages(session_id)
 
-    async for chunk in chain.astream({"question": query}):
-        if "answer" in chunk:
-            yield chunk["answer"]
+    async for chunk in llm.astream(messages):
+        if chunk.content:
+            yield chunk.content
+
+    full_response = ""
+    async for chunk in llm.astream(messages):
+        if chunk.content:
+            full_response += chunk.content
+    history_manager.add_message(session_id, "assistant", full_response)
 
 
 def chat(query: str, session_id: str = "default") -> dict:
-    chain = get_chain(session_id)
-    result = chain({"question": query})
+    llm = get_llm()
+    history_manager.add_message(session_id, "user", query)
+    messages = history_manager.get_messages(session_id)
 
-    sources = []
-    if "source_documents" in result:
-        for doc in result["source_documents"]:
-            sources.append(
-                {
-                    "content": doc.page_content[:200] + "..."
-                    if len(doc.page_content) > 200
-                    else doc.page_content,
-                    "metadata": doc.metadata,
-                }
-            )
+    response = llm.invoke(messages)
+    answer = response.content
 
-    return {"answer": result["answer"], "sources": sources}
+    history_manager.add_message(session_id, "assistant", answer)
+
+    return {"answer": answer, "sources": []}
