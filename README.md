@@ -150,10 +150,10 @@ else:
 cd backend
 
 # 使用 .conda 环境的 Python
-.conda/python.exe -m pip install -r requirements.txt
+../.conda/python.exe -m pip install -r requirements.txt
 
 # 运行服务
-.conda/python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+../.conda/python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 前端
