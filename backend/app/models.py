@@ -29,3 +29,23 @@ class HealthResponse(BaseModel):
 
 class SessionResponse(BaseModel):
     sessions: List[str]
+
+
+class RAGStatusResponse(BaseModel):
+    enabled: bool
+
+
+class SessionData(BaseModel):
+    id: str
+    name: str
+    messages: List[Dict[str, Any]] = []
+    created_at: str
+    updated_at: str
+
+
+class SessionListResponse(BaseModel):
+    sessions: List[SessionData]
+
+
+class CreateSessionRequest(BaseModel):
+    name: Optional[str] = None

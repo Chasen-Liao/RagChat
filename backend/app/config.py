@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     llm_model: str = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-72B-Instruct")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-zh-v1.5")
     chroma_persist_dir: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
+    chunk_size: int = 256
+    chunk_overlap: int = 32
     max_history_length: int = 10
 
     class Config:

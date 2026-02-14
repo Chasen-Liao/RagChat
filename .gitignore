@@ -59,3 +59,9 @@ logs/
 # Data
 backend/data/*.pdf
 backend/data/*.txt
+backend/sessions.json
+
+# Conda_package
+.conda/
+
+构建文档.md
